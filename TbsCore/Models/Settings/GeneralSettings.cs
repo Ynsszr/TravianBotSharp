@@ -1,12 +1,21 @@
-﻿namespace TravBotSharp.Files.Models.Settings
+﻿using System.Collections.Generic;
+using TbsCore.Models.Settings;
+using TravBotSharp.Files.Models.AccModels;
+using static TravBotSharp.Files.Helpers.Classificator;
+
+namespace TravBotSharp.Files.Models.Settings
 {
     public class GeneralSettings
     {
-        public void init()
+        public void Init()
         {
             this.FillFor = 2;
             this.FillInAdvance = 4;
             this.AutoReadIgms = true;
+            this.Time = new TimeSettings();
+            this.Time.Init();
+            this.Timing = new TimingData();
+            this.Localization = new Dictionary<string, BuildingEnum>();
         }
         public bool AutoActivateProductionBoost { get; set; }
 
@@ -36,5 +45,29 @@
         /// Initialize Chrome selenium driver in headless mode
         /// </summary>
         public bool HeadlessMode { get; set; }
+        /// <summary>
+        /// Time settings for the bot
+        /// </summary>
+        public TimeSettings Time { get; set; }
+        /// <summary>
+        /// Whether you want to Auto improve units
+        /// </summary>
+        public bool AutoImprove { get; set; }
+        /// <summary>
+        /// Data about when things last happened
+        /// </summary>
+        public TimingData Timing { get; set; }
+        /// <summary>
+        /// Whether to close and reopen chrome if there is no task in the next 5 min
+        /// </summary>
+        public bool AutoCloseDriver { get; set; }
+        /// <summary>
+        /// Localization strings
+        /// </summary>
+        public Dictionary<string, BuildingEnum> Localization { get; set; }
+        /// <summary>
+        /// Whether to automatically add random tasks when there is no other task to be executed
+        /// </summary>
+        public bool AutoRandomTasks { get; set; }
     }
 }

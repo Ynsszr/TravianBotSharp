@@ -16,11 +16,12 @@ namespace TravBotSharp.Files.Tasks.LowLevel
         //Array starts with level 0 woodcutter
         private readonly int[] WoodcutterProduction = { 3, 7, 13, 21, 31, 46, 70, 98, 140, 203, 280, 392, 525, 693, 889, 1120, 1400, 1820, 2240, 2800, 3430 };
 
-        public override async Task<TaskRes> Execute(HtmlDocument htmlDoc, ChromeDriver wb, Files.Models.AccModels.Account acc)
+        public override async Task<TaskRes> Execute(Account acc)
         {
+            var wb = acc.Wb.Driver;
             await acc.Wb.Navigate($"{acc.AccInfo.ServerUrl}/production.php?t=1");
 
-            var table = htmlDoc.DocumentNode.Descendants("table").FirstOrDefault(x => x.HasClass("row_table_data"));
+            var table = acc.Wb.Html.DocumentNode.Descendants("table").FirstOrDefault(x => x.HasClass("row_table_data"));
             if (table == null)
             {
                 this.ErrorMessage = "Production table not found.";

@@ -8,12 +8,13 @@ namespace TravBotSharp.Files.Tasks.LowLevel
 {
     public class ReviveHero : BotTask
     {
-        public override async Task<TaskRes> Execute(HtmlDocument htmlDoc, ChromeDriver wb, Files.Models.AccModels.Account acc)
+        public override async Task<TaskRes> Execute(Account acc)
         {
+            var wb = acc.Wb.Driver;
             await acc.Wb.Navigate($"{acc.AccInfo.ServerUrl}/hero.php");
 
             //heroRegeneration
-            var reviveButton = htmlDoc.GetElementbyId("heroRegeneration");
+            var reviveButton = acc.Wb.Html.GetElementbyId("heroRegeneration");
             if (reviveButton == null)
             {
                 this.ErrorMessage = "No revive button!";

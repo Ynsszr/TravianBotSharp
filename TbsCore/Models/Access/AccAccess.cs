@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
+using TravBotSharp.Files.Helpers;
 
 namespace TravBotSharp.Files.Models.AccModels
 {
@@ -15,8 +17,9 @@ namespace TravBotSharp.Files.Models.AccModels
             AllAccess = new List<Access>();
         }
 
-        public Access GetNewAccess()
+        public async Task<Access> GetNewAccess()
         {
+            //await AccountHelper.CheckProxies(AllAccess);
             CurrentAccess++;
 
             if (CurrentAccess >= AllAccess.Count) CurrentAccess = 0;
@@ -31,33 +34,16 @@ namespace TravBotSharp.Files.Models.AccModels
         {
             AllAccess.Add(access);
         }
-        public void AddNewAccess(string pw, string proxy, int port)
+        public void AddNewAccess(AccessRaw raw)
         {
-            string userAgent = "";
-            //randomly select a UserAgent
-            try
-            {
-                // Open the text file using a stream reader.
-                using (StreamReader sr = new StreamReader("data/useragents.txt"))
-                {
-                    var agents = sr.ReadToEnd().Split('\n');
-                    Random rand = new Random();
-                    int i = rand.Next(agents.Length);
-                    userAgent = agents[i];
-                }
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine("AddNewAccess failed, Exception thrown: " + e.Message);
-                userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36";
-            }
-
             var accs = new Access()
             {
-                Password = pw,
-                Proxy = proxy,
-                ProxyPort = port,
-                UserAgent = userAgent,
+                Password = raw.Password,
+                Proxy = raw.Proxy,
+                ProxyPort = raw.ProxyPort,
+                ProxyUsername = raw.ProxyUsername,
+                ProxyPassword = raw.ProxyPassword,
+                UserAgent = IoHelperCore.GetUseragent(),
                 IsSittering = false,
                 LastUsed = DateTime.MinValue
             };

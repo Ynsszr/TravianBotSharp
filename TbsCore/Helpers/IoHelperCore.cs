@@ -6,8 +6,12 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using TbsCore.Helpers;
+using TbsCore.Resources;
 using TravBotSharp.Files.Models.AccModels;
 using TravBotSharp.Files.Tasks;
+using static TbsCore.Models.TB;
 
 namespace TravBotSharp.Files.Helpers
 {
@@ -15,15 +19,25 @@ namespace TravBotSharp.Files.Helpers
     {
         public static string AccountsPath => Path.Combine(TbsPath(), "accounts.txt");
         public static string CachePath => Path.Combine(TbsPath(), "cache");
+        public static string GetCacheDir(string username, string server, Access access)
+        {
+            return Path.Combine(IoHelperCore.CachePath, GetCacheFolder(username, server, access.Proxy));
+        }
 
         public static void AddBuildTasksFromFile(Account acc, Village vill, string location)
         {
-            List<BuildingTask> tasks = null;
+            List<BuildingTask> tasks = new List<BuildingTask>();
             try
             {
                 using (StreamReader sr = new StreamReader(location))
                 {
-                    tasks = JsonConvert.DeserializeObject<List<BuildingTask>>(sr.ReadToEnd());
+                    // If .trbc file, decode into List<BuildTask>
+                    if (Path.GetExtension(location).Equals(".TRBC", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var trbc = JsonConvert.DeserializeObject<TbRoot>(sr.ReadToEnd());
+                        tasks = DecodeTrbc(trbc);
+                    }
+                    else tasks = JsonConvert.DeserializeObject<List<BuildingTask>>(sr.ReadToEnd());
                 }
             }
             catch (Exception e) { return; } // User canceled
@@ -33,6 +47,56 @@ namespace TravBotSharp.Files.Helpers
                 BuildingHelper.AddBuildingTask(acc, vill, task);
             }
             BuildingHelper.RemoveCompletedTasks(vill, acc);
+        }
+
+        private static List<BuildingTask> DecodeTrbc(TbRoot root)
+        {
+            var tasks = new List<BuildingTask>();
+
+            foreach (var cmd in root.commands)
+            {
+                var task = new BuildingTask
+                {
+                    Level = cmd.level
+                };
+                if (cmd.bid > 0) task.BuildingId = (byte)cmd.bid;
+
+                switch (cmd.cmdType)
+                {
+                    case 4: // Based on level
+                        task.TaskType = BuildingHelper.BuildingType.AutoUpgradeResFields;
+                        task.BuildingStrategy = BuildingStrategyEnum.BasedOnLevel;
+                        task.ResourceType = GetTrBuilderResType(cmd.gid);
+                        break;
+                    case 5: // Based on production
+                        task.TaskType = BuildingHelper.BuildingType.AutoUpgradeResFields;
+                        task.BuildingStrategy = BuildingStrategyEnum.BasedOnProduction;
+                        task.ResourceType = GetTrBuilderResType(cmd.gid);
+                        break;
+                    case 6: // Based on storage
+                        task.TaskType = BuildingHelper.BuildingType.AutoUpgradeResFields;
+                        task.BuildingStrategy = BuildingStrategyEnum.BasedOnRes;
+                        task.ResourceType = GetTrBuilderResType(cmd.gid);
+                        break;
+                    default: // Normal build?
+                        task.TaskType = BuildingHelper.BuildingType.General;
+                        task.Building = (Classificator.BuildingEnum)cmd.gid;
+                        break;
+                }
+
+                tasks.Add(task);
+            }
+            return tasks;
+        }
+        private static ResTypeEnum GetTrBuilderResType(int gid)
+        {
+            switch (gid)
+            {
+                case 60: return ResTypeEnum.AllResources;
+                case 61: return ResTypeEnum.ExcludeCrop;
+                case 62: return ResTypeEnum.OnlyCrop;
+            }
+            return ResTypeEnum.AllResources;
         }
 
         public static string TbsPath()
@@ -53,6 +117,8 @@ namespace TravBotSharp.Files.Helpers
                 .GetDirectories(CachePath + "\\")
                 .Where(x => x.Replace(CachePath + "\\", "").StartsWith(userFolder))
                 .ToArray();
+
+            if (removeFolders == null) return;
 
             for (int i = 0; i < removeFolders.Count(); i++)
             {
@@ -88,6 +154,8 @@ namespace TravBotSharp.Files.Helpers
                     accounts = JsonConvert.DeserializeObject<List<Account>>(sr.ReadToEnd());
                 }
                 if (accounts == null) accounts = new List<Account>();
+
+                accounts.ForEach(x => ObjectHelper.FixAccObj(x, x));
             }
             catch (IOException e)
             {
@@ -127,13 +195,13 @@ namespace TravBotSharp.Files.Helpers
         /// Login into account and initialize everything
         /// </summary>
         /// <param name="acc">Account</param>
-        public static void LoginAccount(Account acc)
+        public static async Task LoginAccount(Account acc)
         {
             if (acc.Wb == null)
             { // If Agent doesn't exist yet
                 acc.Tasks = new List<BotTask>();
                 acc.Wb = new WebBrowserInfo();
-                acc.Wb.InitSelenium(acc);
+                await acc.Wb.InitSelenium(acc);
                 acc.TaskTimer = new TaskTimer(acc);
 
                 AccountHelper.StartAccountTasks(acc);
@@ -156,6 +224,27 @@ namespace TravBotSharp.Files.Helpers
                 acc.Wb = null;
             }
             acc.Tasks = null; //TODO: somehow save tasks, JSON cant parse/stringify abstract classes :(
+        }
+
+        /// <summary>
+        /// Gets a random useragent. Useragents written higher in the file are more popular, thus should be
+        /// used by the bot more frequently.
+        /// </summary>
+        /// <returns>Random useragent string</returns>
+        public static string GetUseragent()
+        {
+            Random rnd = new Random();
+            var agents = Resources.useragents.Split('\n');
+            for (int i = 0; i < agents.Length; i++)
+            {
+                int limit = agents.Length - i;
+                int num = rnd.Next(1, limit);
+                if(num <= 1 + limit / 10)
+                {
+                    return agents[i].Replace("\r", "");
+                }
+            }
+            return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.70 Safari/537.36";
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using TbsCore.Models.BuildingModels;
 using TravBotSharp.Files.Models.AccModels;
 using TravBotSharp.Files.Parsers;
 using TravBotSharp.Files.Tasks.LowLevel;
@@ -111,7 +112,7 @@ namespace TravBotSharp.Files.Helpers
         {
             //remove training tasks
             acc.Tasks.RemoveAll(x =>
-                x.vill == vill &&
+                x.Vill == vill &&
                 x.GetType() == typeof(TrainTroops)
                 );
             //start training tasks
@@ -126,7 +127,7 @@ namespace TravBotSharp.Files.Helpers
                 {
                     ExecuteAt = barracksTrain,
                     Great = false,
-                    vill = vill,
+                    Vill = vill,
                     Troop = vill.Settings.BarracksTrain
                 });
                 if (vill.Settings.GreatBarracksTrain)
@@ -140,7 +141,7 @@ namespace TravBotSharp.Files.Helpers
                     {
                         ExecuteAt = gbTrain,
                         Great = true,
-                        vill = vill,
+                        Vill = vill,
                         Troop = vill.Settings.BarracksTrain
                     });
                 }
@@ -157,7 +158,7 @@ namespace TravBotSharp.Files.Helpers
                 {
                     ExecuteAt = stableTrain,
                     Great = false,
-                    vill = vill,
+                    Vill = vill,
                     Troop = vill.Settings.StableTrain
                 });
                 if (vill.Settings.GreatStableTrain)
@@ -171,7 +172,7 @@ namespace TravBotSharp.Files.Helpers
                     {
                         ExecuteAt = gsTrain,
                         Great = true,
-                        vill = vill,
+                        Vill = vill,
                         Troop = vill.Settings.StableTrain
                     });
                 }
@@ -187,7 +188,7 @@ namespace TravBotSharp.Files.Helpers
                 TaskExecutor.AddTask(acc, new TrainTroops()
                 {
                     ExecuteAt = wsTrain,
-                    vill = vill,
+                    Vill = vill,
                     Troop = vill.Settings.WorkshopTrain
                 });
             }
@@ -245,7 +246,8 @@ namespace TravBotSharp.Files.Helpers
                 if (troop == TroopsEnum.None) continue;
 
                 // Research
-                if (!vill.Troops.Researched.Exists(x => x == troop))
+                if (!vill.Troops.Researched.Exists(x => x == troop)
+                    && ((int)troop % 10) != 1) // Don't try to research 1. troops of each tribe (clubs, phalanx...)
                 {
                     if (TroopsHelper.AddBuildingsForTroop(acc, vill, troop))
                     {
@@ -253,7 +255,7 @@ namespace TravBotSharp.Files.Helpers
                         vill.Troops.ToResearch.Add(troop);
                         vill.Troops.ToImprove.Add(troop);
                         //We have all buildings needed to research the troop. Do it.
-                        var researchTask = new ResearchTroop() { vill = vill, ExecuteAt = DateTime.Now };
+                        var researchTask = new ResearchTroop() { Vill = vill, ExecuteAt = DateTime.Now };
                         TaskExecutor.AddTaskIfNotExistInVillage(acc, vill, researchTask);
                     }
                     continue;
@@ -261,12 +263,12 @@ namespace TravBotSharp.Files.Helpers
                 else vill.Troops.ToResearch.Remove(troop);
 
                 // Improvement
-                if (!vill.Troops.Levels.Exists(x => x.Troop == troop && x.Level == 20))
+                if (!vill.Troops.Levels.Exists(x => x.Troop == troop && x.Level == 20) && acc.Settings.AutoImprove)
                 {
                     vill.Troops.ToImprove.Add(troop);
                     if (vill.Build.Buildings.Any(x => x.Type == BuildingEnum.Smithy))
                     {
-                        TaskExecutor.AddTaskIfNotExistInVillage(acc, vill, new ImproveTroop() { vill = vill, ExecuteAt = DateTime.Now });
+                        TaskExecutor.AddTaskIfNotExistInVillage(acc, vill, new ImproveTroop() { Vill = vill, ExecuteAt = DateTime.Now });
                     }
                 }
                 else vill.Troops.ToImprove.Remove(troop);
@@ -506,6 +508,19 @@ namespace TravBotSharp.Files.Helpers
                 case TribeEnum.Gauls: return Classificator.TroopsEnum.Phalanx;
                 case TribeEnum.Egyptians: return Classificator.TroopsEnum.SlaveMilitia;
                 case TribeEnum.Huns: return Classificator.TroopsEnum.Mercenary;
+                default: return TroopsEnum.None;
+            }
+        }
+
+        public static Classificator.TroopsEnum TribeSettler(Classificator.TribeEnum? tribe)
+        {
+            switch (tribe)
+            {
+                case TribeEnum.Romans: return Classificator.TroopsEnum.RomanSettler;
+                case TribeEnum.Teutons: return Classificator.TroopsEnum.TeutonSettler;
+                case TribeEnum.Gauls: return Classificator.TroopsEnum.GaulSettler;
+                case TribeEnum.Egyptians: return Classificator.TroopsEnum.EgyptianSettler;
+                case TribeEnum.Huns: return Classificator.TroopsEnum.HunSettler;
                 default: return TroopsEnum.None;
             }
         }

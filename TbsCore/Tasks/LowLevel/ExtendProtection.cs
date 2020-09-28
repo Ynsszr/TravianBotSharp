@@ -11,10 +11,10 @@ namespace TravBotSharp.Files.Tasks.LowLevel
     /// </summary>
     public class ExtendProtection : BotTask
     {
-        public override async Task<TaskRes> Execute(HtmlDocument htmlDoc, ChromeDriver wb, Files.Models.AccModels.Account acc)
+        public override async Task<TaskRes> Execute(Account acc)
         {
             //Sitters cannot extend protection on TTWARS!
-            var extendButton = htmlDoc.DocumentNode.Descendants("button").FirstOrDefault(x => x.GetAttributeValue("value", "") == "Extend");
+            var extendButton = acc.Wb.Html.DocumentNode.Descendants("button").FirstOrDefault(x => x.GetAttributeValue("value", "") == "Extend");
             if (extendButton == null)
             {
                 this.ErrorMessage = "Can not extend protection! Are you a sitter?";
